@@ -1,45 +1,43 @@
-#include "grid.h"
-#include "station.h"
-#include "analysis.h"
 #include "report.h"
+#include "analysis.h"
+#include "grid.h"
 #include <iostream>
-#include <string>
+#include <iomanip>
 
-int main() {
-    constexpr int station_count = 4;
-    constexpr int day_count = 7;
+void print_report(const Station* stations, const double* temps, int rows, int cols, double threshold) {
+    if (!stations || !temps || rows <= 0 || cols <= 0) {
+        std::cout << "Invalid grid dimensions or null pointer provided.\n";
+        return;
+    }
 
-    const Station stations[station_count] = {
-        {"Normal", 161.5},
-        {"Fairway", 152.0},
-        {"North", 170.0},
-        {"Downtown", 145.0}
-    };
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "=== Weather Station Report ===\n";
 
-    const double temps[station_count * day_count] = {
-        50.0, 52.5, 51.0, 53.0, 55.0, 54.0, 52.0, // Normal
-        58.0, 60.0, 62.0, 61.0, 63.0, 65.0, 64.0, // Fairway
-        45.0, 47.0, 46.0, 48.0, 50.0, 49.0, 47.5, // North
-        60.0, 62.0, 65.0, 67.0, 66.0, 68.0, 69.0  // Downtown
-    };
-
-    double threshold = 60.0;
-
-    print_report(stations, temps, station_count, day_count, threshold);
-
-    std::cout << "\nEnter station name to lookup: ";
-    std::string query;
-    if (std::getline(std::cin, query) && !query.empty()) {
-        int idx = find_station(stations, station_count, query);
-        if (idx != -1) {
-            double avg = 0.0;
-            if (station_average(temps, station_count, day_count, idx, avg)) {
-                std::cout << "Station " << stations[idx].name << " Average Temp: " << avg << "\n";
-            }
-        } else {
-            std::cout << "Station not found.\n";
+    // Station Averages
+    for (int r = 0; r < rows; ++r) {
+        double avg = 0.0;
+        if (station_average(temps, rows, cols, r, avg)) {
+            std::cout << stations[r].name << " avg " << avg << " F\n";
         }
     }
 
-    return 0;
+    // Day Averages
+    for (int c = 0; c < cols; ++c) {
+        double avg = 0.0;
+        if (day_average(temps, rows, cols, c, avg)) {
+            std::cout << "Day " << (c + 1) << " avg " << avg << " F\n";
+        }
+    }
+
+    // Hottest Location
+    int hot_r = 0, hot_c = 0;
+    if (find_hottest(temps, rows, cols, hot_r, hot_c)) {
+        int idx = grid_index(hot_r, hot_c, cols);
+        std::cout << "Hottest reading: " << temps[idx] << " F at " 
+                  << stations[hot_r].name << " (day " << (hot_c + 1) << ")\n";
+    }
+
+    // Readings above threshold
+    int above_count = count_above(temps, rows, cols, threshold);
+    std::cout << "Readings above " << threshold << " F: " << above_count << "\n";
 }
